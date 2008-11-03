@@ -171,9 +171,10 @@ submit_request(Url, ParseFun) ->
     end.
 
 parse_json(Body) ->
-    case rfc4627:decode(Body) of
-        {ok, Response, _} -> Response;
-        _ -> {error, parse_error}
+	io:format(Body),
+    case mochijson2:decode(Body) of
+        {ok, Response} -> Response;
+        _ -> {error, json_parse_error}
     end.
 
 parse_xml(_Body) -> {error, unimplemented}.
@@ -182,7 +183,7 @@ create_signature(Dict, Secret) ->
     Keys = lists:sort(dict:fetch_keys(Dict)),
     PreHash = lists:concat([[begin
         Value = dict:fetch(Key, Dict),
-        lists:concat([Key, "=", yaws_api:url_encode(Value)])
+        mochiweb_util:urlencode([{Key,Value}])
     end || Key <- Keys], [Secret]]),
     hashme(PreHash).
 
@@ -198,10 +199,10 @@ build_querystring(List) -> build_querystring(List, []).
 
 build_querystring([], Acc) -> Acc;
 build_querystring([{Key, Value} | Tail], []) ->
-    Acc = lists:concat(["?", Key, "=", yaws_api:url_encode(Value)]),
+    Acc = lists:concat(["?", mochiweb_util:urlencode([{Key,Value}])]),
     build_querystring(Tail, Acc);
 build_querystring([{Key, Value} | Tail], Acc) ->
-    NewAcc = lists:concat([Acc, "&", Key, "=", yaws_api:url_encode(Value)]),
+    NewAcc = lists:concat([Acc, "&", mochiweb_util:urlencode([{Key,Value}])]),
     build_querystring(Tail, NewAcc).
 
 facebook_fun(Args) ->
